@@ -10,28 +10,53 @@ local fd, up, dl, n = 10, 0.001, 0.01, 1
 local timpaEnabled = true
 local uiDestroyed = false
 
+local function getGroundBelow(position)
+	local rayOrigin = position + Vector3.new(0, 5, 0)
+	local rayDirection = Vector3.new(0, -100, 0)
+	local params = RaycastParams.new()
+	params.FilterDescendantsInstances = {plr.Character}
+	params.FilterType = Enum.RaycastFilterType.Blacklist
+	return workspace:Raycast(rayOrigin, rayDirection, params)
+end
+
+local function getGroundCFrameAbovePosition(position, rotation)
+	local result = getGroundBelow(position)
+	if result then
+		return CFrame.new(result.Position + Vector3.new(0, 0.05, 0)) * CFrame.Angles(0, rotation, 0)
+	else
+		return CFrame.new(position) * CFrame.Angles(0, rotation, 0)
+	end
+end
+
 local function fele()
 	if not timpaEnabled then return end
-	local hrp = (plr.Character or plr.CharacterAdded:Wait()):WaitForChild("HumanoidRootPart")
+	local char = plr.Character or plr.CharacterAdded:Wait()
+	local hrp = char:WaitForChild("HumanoidRootPart")
+	if not hrp then return end
+
+	local rotY = select(2, hrp.CFrame:ToEulerAnglesYXZ())
 	local pos = hrp.Position + hrp.CFrame.LookVector * fd
-	local ray = workspace:Raycast(pos + Vector3.new(0,20,0), Vector3.new(0,-50,0), RaycastParams.new())
-	if ray then pos = ray.Position end
-	for i=1,n do
+	local baseCFrame = getGroundCFrameAbovePosition(pos, rotY)
+
+	for i = 1, n do
+		local newCFrame = baseCFrame * CFrame.new(0, (i - 1) * up, 0)
 		pcall(function()
-			act:FireServer(1, {toolType, CFrame.new(pos + Vector3.new(0, (i-1)*up, 0))})
+			if act then
+				act:FireServer(1, {toolType, newCFrame})
+			end
 		end)
 		task.wait(dl)
 	end
 end
 
-local function bindL()
-	cas:UnbindAction("TelePlace")
-	cas:BindAction("TelePlace", function(_, s)
-		if s == Enum.UserInputState.Begin then fele() end
+if cas then
+	pcall(function() cas:UnbindAction("TelePlace") end)
+	cas:BindAction("TelePlace", function(_, state)
+		if state == Enum.UserInputState.Begin then
+			pcall(fele)
+		end
 	end, false, Enum.KeyCode.L)
 end
-plr.CharacterAdded:Connect(bindL)
-if plr.Character then bindL() end
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "TeleporterUI"
@@ -40,32 +65,55 @@ screenGui.Parent = plr:WaitForChild("PlayerGui")
 
 local frame = Instance.new("Frame", screenGui)
 frame.AnchorPoint = Vector2.new(0.5, 0.5)
-frame.Position = UDim2.new(0.2, 0, 0.2, 0)
-frame.Size = UDim2.new(0.1, 0, 0.15, 0)
-frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
-frame.BackgroundTransparency = 0.1
+frame.Position = UDim2.new(0.2, 0, 0.3, 0)
+frame.Size = UDim2.new(0.17, 0, 0.28, 0)
+frame.BackgroundColor3 = Color3.fromRGB(15, 20, 35)
+frame.BackgroundTransparency = 0.3
 frame.BorderSizePixel = 0
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0,10)
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0,12)
+
+local border = Instance.new("UIStroke", frame)
+border.Thickness = 2
+border.Color = Color3.fromRGB(0, 180, 255)
+border.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+local grid = Instance.new("ImageLabel", frame)
+grid.Size = UDim2.new(1,0,1,0)
+grid.BackgroundTransparency = 1
+grid.Image = "rbxassetid://13981788076" -- hologram grid subtle
+grid.ImageColor3 = Color3.fromRGB(0,150,255)
+grid.ImageTransparency = 0.9
+grid.ScaleType = Enum.ScaleType.Tile
+grid.TileSize = UDim2.new(0,60,0,60)
+grid.ZIndex = 0
 
 local titleBar = Instance.new("Frame", frame)
-titleBar.Size = UDim2.new(1, 0, 0.18, 0)
-titleBar.BackgroundColor3 = Color3.fromRGB(35,35,35)
+titleBar.Size = UDim2.new(1, 0, 0.15, 0)
+titleBar.BackgroundColor3 = Color3.fromRGB(20,25,45)
+titleBar.BackgroundTransparency = 0.2
+titleBar.BorderSizePixel = 0
 Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0,10)
+
+local titleStroke = Instance.new("UIStroke", titleBar)
+titleStroke.Thickness = 1.5
+titleStroke.Color = Color3.fromRGB(0,180,255)
+titleStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
 local title = Instance.new("TextLabel", titleBar)
 title.Text = "EL TIMPA"
-title.Size = UDim2.new(1, -30, 1, 0)
-title.Position = UDim2.new(0, 8, 0, 0)
+title.Size = UDim2.new(1, -35, 1, 0)
+title.Position = UDim2.new(0, 10, 0, 0)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.GothamBold
 title.TextScaled = true
-title.TextColor3 = Color3.new(1,1,1)
+title.TextColor3 = Color3.fromRGB(0, 200, 255)
+title.TextStrokeTransparency = 0.8
 title.TextXAlignment = Enum.TextXAlignment.Left
 
 local close = Instance.new("TextButton", titleBar)
-close.Size = UDim2.new(0, 25, 1, 0)
-close.Position = UDim2.new(1, -25, 0, 0)
-close.Text = "X"
+close.Size = UDim2.new(0, 40, 1, 0)
+close.Position = UDim2.new(1, -40, 0, 0)
+close.Text = "×"
 close.Font = Enum.Font.GothamBold
 close.TextScaled = true
 close.TextColor3 = Color3.fromRGB(255,80,80)
@@ -76,25 +124,35 @@ end)
 
 local dropdown = Instance.new("TextButton", frame)
 dropdown.Size = UDim2.new(0.9, 0, 0.18, 0)
-dropdown.Position = UDim2.new(0.05, 0, 0.25, 0)
+dropdown.Position = UDim2.new(0.05, 0, 0.2, 0)
 dropdown.Text = toolType
 dropdown.Font = Enum.Font.Gotham
 dropdown.TextScaled = true
-dropdown.TextColor3 = Color3.new(1,1,1)
-dropdown.BackgroundColor3 = Color3.fromRGB(50,50,50)
-Instance.new("UICorner", dropdown).CornerRadius = UDim.new(0,8)
+dropdown.TextColor3 = Color3.fromRGB(200,255,255)
+dropdown.BackgroundColor3 = Color3.fromRGB(25,35,55)
+dropdown.BackgroundTransparency = 0.15
+dropdown.AutoButtonColor = false
+Instance.new("UICorner", dropdown).CornerRadius = UDim.new(0,10)
+local ds = Instance.new("UIStroke", dropdown)
+ds.Color = Color3.fromRGB(0,170,255)
+ds.Thickness = 1.4
+ds.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
-local options = {"Teleporter", "Landmine", "JumpPad", "Speedpad", "Portal", "SpringPad", "Booster"}
+local options = {"Teleporter", "Landmine", "JumpPad", "Speedpad", "Portal", "SpringPad", "Booster", "Beacon"}
 
 local menu = Instance.new("ScrollingFrame", frame)
-menu.Position = UDim2.new(0.05,0,0.45,0)
+menu.Position = UDim2.new(0.05,0,0.38,0)
 menu.Size = UDim2.new(0.9,0,0.5,0)
-menu.BackgroundColor3 = Color3.fromRGB(30,30,30)
+menu.BackgroundColor3 = Color3.fromRGB(15,20,35)
+menu.BackgroundTransparency = 0.3
 menu.ScrollBarThickness = 4
 menu.Visible = false
 menu.AutomaticCanvasSize = Enum.AutomaticSize.Y
 menu.ZIndex = 2
-Instance.new("UICorner", menu).CornerRadius = UDim.new(0,8)
+Instance.new("UICorner", menu).CornerRadius = UDim.new(0,10)
+local ms = Instance.new("UIStroke", menu)
+ms.Color = Color3.fromRGB(0,170,255)
+ms.Thickness = 1.3
 
 local layout = Instance.new("UIListLayout", menu)
 layout.Padding = UDim.new(0,5)
@@ -105,18 +163,23 @@ for _,opt in ipairs(options) do
 	local btn = Instance.new("TextButton", menu)
 	btn.ZIndex = 2
 	btn.Size = UDim2.new(0.95,0,0.3,0)
-	btn.BackgroundColor3 = Color3.fromRGB(45,45,45)
+	btn.BackgroundColor3 = Color3.fromRGB(30,45,65)
+	btn.BackgroundTransparency = 0.1
 	btn.Text = opt
-	btn.TextColor3 = Color3.new(1,1,1)
+	btn.TextColor3 = Color3.new(0.9,1,1)
 	btn.Font = Enum.Font.Gotham
 	btn.TextScaled = true
-	Instance.new("UICorner", btn).CornerRadius = UDim.new(0,6)
+	btn.AutoButtonColor = false
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0,8)
+	local st = Instance.new("UIStroke", btn)
+	st.Color = Color3.fromRGB(0,150,255)
+	st.Thickness = 1.2
 
 	btn.MouseEnter:Connect(function()
-		ts:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(70,70,70)}):Play()
+		ts:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(40,65,90)}):Play()
 	end)
 	btn.MouseLeave:Connect(function()
-		ts:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(45,45,45)}):Play()
+		ts:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(30,45,65)}):Play()
 	end)
 	btn.MouseButton1Click:Connect(function()
 		toolType = opt
@@ -124,61 +187,66 @@ for _,opt in ipairs(options) do
 		menu.Visible = false
 	end)
 end
-
 dropdown.MouseButton1Click:Connect(function()
 	menu.Visible = not menu.Visible
 end)
 
 local toggleBtn = Instance.new("TextButton", frame)
 toggleBtn.Size = UDim2.new(0.9, 0, 0.15, 0)
-toggleBtn.Position = UDim2.new(0.05, 0, 0.56, 0)
+toggleBtn.Position = UDim2.new(0.05, 0, 0.45, 0)
 toggleBtn.Text = "Timpa : ON"
 toggleBtn.Font = Enum.Font.GothamBold
 toggleBtn.TextScaled = true
-toggleBtn.BackgroundColor3 = Color3.fromRGB(45,85,45)
-toggleBtn.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0,8)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(25,60,40)
+toggleBtn.BackgroundTransparency = 0.15
+toggleBtn.TextColor3 = Color3.new(0.9,1,0.9)
+toggleBtn.AutoButtonColor = false
+Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0,10)
+local tbStroke = Instance.new("UIStroke", toggleBtn)
+tbStroke.Color = Color3.fromRGB(0,170,255)
+tbStroke.Thickness = 1.3
 
 toggleBtn.MouseButton1Click:Connect(function()
 	timpaEnabled = not timpaEnabled
 	if timpaEnabled then
 		toggleBtn.Text = "Timpa : ON"
-		toggleBtn.BackgroundColor3 = Color3.fromRGB(45,85,45)
+		toggleBtn.BackgroundColor3 = Color3.fromRGB(25,60,40)
 	else
 		toggleBtn.Text = "Timpa : OFF"
-		toggleBtn.BackgroundColor3 = Color3.fromRGB(100,40,40)
+		toggleBtn.BackgroundColor3 = Color3.fromRGB(70,25,25)
 	end
 end)
 
 local destroyBtn = Instance.new("TextButton", frame)
-destroyBtn.Size = UDim2.new(0.9,0,0.13,0)
-destroyBtn.Position = UDim2.new(0.05,0,0.75,0)
+destroyBtn.Size = UDim2.new(0.9,0,0.15,0)
+destroyBtn.Position = UDim2.new(0.05,0,0.63,0)
 destroyBtn.Text = "Destroy UI"
 destroyBtn.Font = Enum.Font.GothamBold
 destroyBtn.TextScaled = true
-destroyBtn.TextColor3 = Color3.new(1,1,1)
-destroyBtn.BackgroundColor3 = Color3.fromRGB(80,40,40)
-Instance.new("UICorner", destroyBtn).CornerRadius = UDim.new(0,8)
-
-local hint = Instance.new("TextLabel", frame)
-hint.Size = UDim2.new(1,0,0.08,0)
-hint.Position = UDim2.new(0.05,0,0.97,0)
-hint.AnchorPoint = Vector2.new(0,1)
-hint.BackgroundTransparency = 1
-hint.Font = Enum.Font.Gotham
-hint.TextScaled = false
-hint.TextSize = 10
-hint.TextColor3 = Color3.fromRGB(200,200,200)
-hint.Text = "[L] Place " .. toolType .. "  |  [K] Show UI"
-hint.TextWrapped = true
-
-dropdown:GetPropertyChangedSignal("Text"):Connect(function()
-	hint.Text = "[L] Place " .. dropdown.Text .. "  |  [K] Show UI"
-end)
-
+destroyBtn.TextColor3 = Color3.new(1,0.8,0.8)
+destroyBtn.BackgroundColor3 = Color3.fromRGB(50,25,35)
+destroyBtn.BackgroundTransparency = 0.15
+Instance.new("UICorner", destroyBtn).CornerRadius = UDim.new(0,10)
+local dsb = Instance.new("UIStroke", destroyBtn)
+dsb.Color = Color3.fromRGB(255,60,60)
+dsb.Thickness = 1.4
 destroyBtn.MouseButton1Click:Connect(function()
 	uiDestroyed = true
 	screenGui:Destroy()
+end)
+
+local hint = Instance.new("TextLabel", frame)
+hint.Size = UDim2.new(1,0,0.08,0)
+hint.Position = UDim2.new(0,0,0.90,0)
+hint.BackgroundTransparency = 1
+hint.Font = Enum.Font.Gotham
+hint.TextScaled = true
+hint.TextColor3 = Color3.fromRGB(0,200,255)
+hint.TextStrokeTransparency = 0.8
+hint.Text = "[L] Place " .. toolType .. "  |  [K] Show/Hide UI"
+hint.TextWrapped = true
+dropdown:GetPropertyChangedSignal("Text"):Connect(function()
+	hint.Text = "[L] Place " .. dropdown.Text .. "  |  [K] Show/Hide UI"
 end)
 
 local dragging, dragStart, startPos
