@@ -1,0 +1,130 @@
+local Players = game:GetService("Players")
+local lp = Players.LocalPlayer
+local pg = lp:WaitForChild("PlayerGui")
+local UIS = game:GetService("UserInputService")
+local cmd = game.ReplicatedStorage.Events.Admin.Command
+local cmo = game.ReplicatedStorage.Events.Player.ChangePlayerMode
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "AF_UI"
+gui.ResetOnSpawn = false
+gui.Parent = game.CoreGui
+
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0, 240, 0, 160)
+main.Position = UDim2.new(0.5, -120, 0.4, -80)
+main.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+main.BorderSizePixel = 0
+main.Active = true
+main.Draggable = true
+main.Parent = gui
+
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 12)
+
+local top = Instance.new("Frame")
+top.Size = UDim2.new(1, 0, 0, 32)
+top.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+top.BorderSizePixel = 0
+top.Parent = main
+Instance.new("UICorner", top).CornerRadius = UDim.new(0, 12)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -60, 1, 0)
+title.Position = UDim2.new(0, 10, 0, 0)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.GothamSemibold
+title.TextSize = 16
+title.TextColor3 = Color3.new(1,1,1)
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Text = "Auto Farm"
+title.Parent = top
+
+local close = Instance.new("TextButton")
+close.Size = UDim2.new(0, 40, 1, 0)
+close.Position = UDim2.new(1, -40, 0, 0)
+close.BackgroundTransparency = 1
+close.Font = Enum.Font.GothamSemibold
+close.TextColor3 = Color3.fromRGB(200,200,200)
+close.TextSize = 18
+close.Text = "X"
+close.Parent = top
+
+local toggle = Instance.new("TextButton")
+toggle.Size = UDim2.new(1, -20, 0, 36)
+toggle.Position = UDim2.new(0, 10, 0, 50)
+toggle.Text = "Auto Farm : OFF"
+toggle.Font = Enum.Font.GothamBold
+toggle.TextSize = 14
+toggle.BackgroundColor3 = Color3.fromRGB(50, 120, 255)
+toggle.TextColor3 = Color3.new(1,1,1)
+toggle.Parent = main
+Instance.new("UICorner", toggle).CornerRadius = UDim.new(0, 8)
+
+local textsss = Instance.new("TextLabel")
+textsss.Size = UDim2.new(1, -20, 0, 36)
+textsss.Position = UDim2.new(0, 10, 1, -76)
+textsss.Text = "Auto Farm Streak, Exp, Money"
+textsss.Font = Enum.Font.GothamBold
+textsss.TextSize = 12
+textsss.BackgroundTransparency = 1
+textsss.TextColor3 = Color3.new(1,1,1)
+textsss.Parent = main
+Instance.new("UICorner", destroy).CornerRadius = UDim.new(0, 8)
+
+close.MouseButton1Click:Connect(function()
+	gui:Destroy()
+end)
+
+local autofarm = false
+local lastRun = 0
+local cooldown = 25
+
+local function doAutoFarm()
+	if not autofarm then return end
+	local now = tick()
+	if now - lastRun < cooldown then return end
+	lastRun = now
+
+	cmo:FireServer(false)
+	task.wait(3)
+
+	cmo:FireServer(true)
+	task.wait(2)
+
+	cmd:InvokeServer("!specialround Plushie Hell")
+	task.wait(1)
+
+	lp.Character.HumanoidRootPart.CFrame = CFrame.new(-0.745242, -201.908966, 993.3078)
+
+	task.wait(1)
+	cmd:InvokeServer("!time 1")
+end
+
+local function watchTimer(timer)
+	timer:GetPropertyChangedSignal("Visible"):Connect(function()
+		if timer.Visible and autofarm then
+			doAutoFarm()
+		end
+	end)
+end
+
+task.spawn(function()
+	for _, obj in ipairs(pg:GetDescendants()) do
+		if obj.Name == "RoundTimer" then
+			watchTimer(obj)
+		end
+	end
+end)
+
+pg.DescendantAdded:Connect(function(obj)
+	if obj.Name == "RoundTimer" then
+		watchTimer(obj)
+	end
+end)
+
+toggle.MouseButton1Click:Connect(function()
+	autofarm = not autofarm
+	toggle.Text = autofarm and "Auto Farm : ON" or "Auto Farm : OFF"
+	toggle.BackgroundColor3 = autofarm and Color3.fromRGB(60,160,60) or Color3.fromRGB(50,120,255)
+	if autofarm then lastRun = 0 end
+end)
